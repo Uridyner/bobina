@@ -1,7 +1,7 @@
 constexpr uint8_t sensorPins[5] = { A7, A6, A5, A4, A3 };
 constexpr size_t nSensors = sizeof(sensorPins) / sizeof(sensorPins[0]);
 
-constexpr float maxVoltajeADC = 5.0;
+constexpr float voltsMaxADC = 5.0;
 constexpr uint8_t resADC = 10;
 constexpr uint8_t valorMaxADC = pow(2, resADC);
 
@@ -10,7 +10,9 @@ void setup() {
     pinMode(sensorPins[i], INPUT);
   }
   
-  Serial.begin(115200);
+  Serial.begin(115200);^
+
+  analogReadResolution(resADC);
 }
 
 void loop() {
