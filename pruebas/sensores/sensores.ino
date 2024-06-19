@@ -10,7 +10,7 @@ void setup() {
     pinMode(sensorPins[i], INPUT);
   }
   
-  Serial.begin(115200);^
+  Serial.begin(115200);
 
   analogReadResolution(resADC);
 }
