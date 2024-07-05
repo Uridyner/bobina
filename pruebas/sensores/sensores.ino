@@ -11,8 +11,6 @@ void setup() {
   }
   
   Serial.begin(115200);
-
-  analogReadResolution(resADC);
 }
 
 void loop() {
@@ -21,11 +19,11 @@ void loop() {
     Serial.print("Sensor ");
     Serial.print(i);
     Serial.print(":");
-    Serial.print(porcentaje * maxVoltajeADC, 3);
+    Serial.print(porcentaje * voltsMaxADC, 3);
     Serial.print('\t');
   }
   Serial.print("Máximo:");
-  Serial.print(maxVoltajeADC, 3);
+  Serial.print(voltsMaxADC, 3);
   Serial.print('\t');
   Serial.print("Mínimo:");
   Serial.print(0.0, 3);
