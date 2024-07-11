@@ -3,7 +3,7 @@ constexpr size_t nSensors = sizeof(sensorPins) / sizeof(sensorPins[0]);
 
 constexpr float voltsMaxADC = 5.0;
 constexpr uint8_t resADC = 10;
-constexpr uint8_t valorMaxADC = pow(2, resADC);
+constexpr uint16_t valorMaxADC = pow(2, resADC);
 
 void setup() {
   for (int i = 0; i < nSensors; i++) {
