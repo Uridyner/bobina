@@ -5,7 +5,7 @@ constexpr uint8_t MOT_R_A = 9;
 constexpr uint8_t MOT_R_B = 12;
 constexpr uint8_t MOT_R_PWM = 10;
 
-constexpr uint8_t PINES_SHARPS[3] = { A7, A6, A5 };
+constexpr uint8_t PINES_SHARPS[3] = { A7, A5, A3 };
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -124,4 +124,10 @@ void setup() {
 
 void loop() {
   leerSharps();
+  if (distanciasSharps[0] < 60 || distanciasSharps[1] < 60 || distanciasSharps[2] < 60) {
+    adelante();
+  } else {
+    parada();
+  }
+  delay(10);
 }
