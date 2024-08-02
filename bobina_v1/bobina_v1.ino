@@ -255,8 +255,8 @@ inline bool estaPresionado(size_t boton) {
 }
 
 enum {
-  GIRO_DER
-    GIRO_IZQ,
+  GIRO_DER,
+  GIRO_IZQ,
 } giroPreferido;
 
 void setup() {
