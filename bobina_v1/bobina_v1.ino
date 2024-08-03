@@ -288,13 +288,19 @@ void setup() {
 
   unsigned long ultimoCambioLeds = millis();
 
-  while (estaPresionado(1) == false) {
+  while (estaPresionado(0) == false && estaPresionado(1) == false) {
     if (millis() - ultimoCambioLeds > 250) {
       for (size_t i = 0; i < NUM_LEDS - 1; i++) {
         cambiarLed(i, rand() % 2);
       }
       ultimoCambioLeds = millis();
     }
+  }
+
+  if (estaPresionado(0)) {
+    giroPreferido = GIRO_IZQ;
+  } else if (estaPresionado(1)) {
+    giroPreferido = GIRO_DER;
   }
 
   unsigned long tiempoComienzo = millis();
@@ -310,12 +316,6 @@ void setup() {
       cambiarLed(i, bitRead(segundosRestantes, i) == true);
     }
     cambiarLed(NUM_LEDS - 1, giroPreferido == GIRO_IZQ);
-
-    if (estaPresionado(0)) {
-      giroPreferido = GIRO_IZQ;
-    } else if (estaPresionado(1)) {
-      giroPreferido = GIRO_DER;
-    }
 
 #if DEBUG
     const unsigned char ultimoDigitoTiempo = ((TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 100);
