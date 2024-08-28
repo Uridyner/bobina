@@ -1,3 +1,5 @@
+#include <Smoothed.h>
+
 /// Motor izquierdo, adelante
 constexpr uint8_t MOT_L_A = 7;
 /// Motor izquierdo, atrás
@@ -31,7 +33,7 @@ constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 35;
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
 constexpr size_t LECTURAS_SHARP = 1;
 /// Lecturas por segundos de los sharp
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 25;
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 40;
 
 enum LadoCNY {
   CNY_IZQ = 0,
@@ -41,11 +43,11 @@ enum LadoCNY {
 constexpr uint8_t PINES_CNY[] = { A6, A4 };
 /// Numero de CNYs en la placa
 constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
-constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.5, 0.5 };
+constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.4, 0.4 };
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 4;
+constexpr size_t LECTURAS_CNY = 3;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -75,7 +77,7 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 /// Tiempo que se espera antes de empezar a correr
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 #if DEBUG
 #define debugSetup() Serial.begin(115200)
@@ -162,29 +164,26 @@ void setupMotores() {
   debugPrintln("Velocidad de los motores establecidas!");
 }
 
-unsigned int distanciasSharps[NUM_SHARPS];
+Smoothed<unsigned int> sharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
-unsigned int* leerSharps() {
+Smoothed<unsigned int>* leerSharps() {
   if (millis() - ultimaLecturaSharps < 1000 / FRECUENCIA_LECTURA_SHARP) {
-    return distanciasSharps;
+    return sharps;
   }
   ultimaLecturaSharps = millis();
   for (size_t i = 0; i < NUM_SHARPS; i++) {
-    distanciasSharps[i] = 0;
-    for (size_t j = 0; j < LECTURAS_SHARP; j++) {
-      distanciasSharps[i] += (unsigned int)round(17569.7 * pow(analogRead(PINES_SHARPS[i]), -1.2062));
-    }
-    distanciasSharps[i] /= LECTURAS_SHARP;
-    debugPrint("Sharp ");
+    const unsigned int distancia = (unsigned int)round(17569.7 * pow(analogRead(PINES_SHARPS[i]), -1.2062));
+    sharps[i].add(distancia);
+    debugPrint("Sharp");
     debugPrint(i + 1);
     debugPrint(':');
-    debugPrint(distanciasSharps[i]);
+    debugPrint(sharps[i].get());
     debugPrint('\t');
   }
   debugPrintln();
   ultimaLecturaSharps = millis();
-  return distanciasSharps;
+  return sharps;
 }
 
 void setupSharps() {
@@ -192,6 +191,7 @@ void setupSharps() {
   for (int i = 0; i < NUM_SHARPS; i++) {
     debugPrint("Sensor distancia sharp ");
     pinMode(PINES_SHARPS[i], INPUT);
+	  sharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);	
     debugPrintln(i + 1);
   }
   debugPrintln("Pines de los sharps inicializados!");
@@ -205,7 +205,7 @@ float* leerCNY() {
     for (size_t j = 0; j < LECTURAS_CNY; j++) {
       lecturasCNY[i] += lecturaAVoltaje(analogRead(PINES_CNY[i])) / LECTURAS_CNY;
     }
-    debugPrint("CNY ");
+    debugPrint("CNY");
     debugPrint(i + 1);
     debugPrint(':');
     debugPrint(lecturasCNY[i]);
@@ -289,7 +289,7 @@ void setup() {
   unsigned long ultimoCambioLeds = millis();
 
   while (estaPresionado(0) == false && estaPresionado(1) == false) {
-    if (millis() - ultimoCambioLeds > 250) {
+    if (millis() - ultimoCambioLeds > 125) {
       for (size_t i = 0; i < NUM_LEDS - 1; i++) {
         cambiarLed(i, rand() % 2);
       }
@@ -344,7 +344,7 @@ unsigned long ultimoCambioRetrocediendo = -1;
 
 void loop() {
   leerCNY();
-  if (millis() - ultimoCambioRetrocediendo > 800) {
+  if (millis() - ultimoCambioRetrocediendo > 700) {
     retrocediendo = ATRAS_NADA;
   }
   if (retrocediendo == ATRAS_NADA) {
@@ -360,18 +360,18 @@ void loop() {
     }
   }
   leerSharps();
-  if (distanciasSharps[SHARP_CEN] < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
+  if (sharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     adelante();
-  } else if (distanciasSharps[SHARP_IZQ] < DISTANCIA_ACTIVACION_SHARPS) {
-    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+  } else if (sharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
+    analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
+    analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
     izquierda();
     retrocediendo = ATRAS_NADA;
-  } else if (distanciasSharps[SHARP_DER] < DISTANCIA_ACTIVACION_SHARPS) {
-    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+  } else if (sharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
+    analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
+    analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
     derecha();
     retrocediendo = ATRAS_NADA;
   } else {
@@ -402,7 +402,7 @@ void loop() {
     }
   }
   for (size_t i = 0; i < NUM_LEDS; i++) {
-    cambiarLed(i, bitRead(distanciasSharps[SHARP_CEN] >> 2, i) == true);
+    cambiarLed(i, bitRead(sharps[SHARP_CEN].get() >> 2, i) == true);
   }
 #ifdef DEBUG
   delay(100);
