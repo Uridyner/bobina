@@ -373,8 +373,8 @@ void loop() {
   }
   leerSharps();
   if (sharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
-    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+    analogWrite(MOT_L_PWM, 255);
+    analogWrite(MOT_R_PWM, 255);
     adelante();
     ultimoAvance = millis();
   } else if (sharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
