@@ -87,7 +87,7 @@ constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 1000;
 /// Tiempo que avanza forzadamente para evitar que se pare la pelea
 constexpr unsigned int TIEMPO_AVANCE_FORZADO_MS = 100;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 #if DEBUG
 #define debugSetup() Serial.begin(115200)
@@ -437,7 +437,7 @@ void loop() {
   for (size_t i = 0; i < NUM_LEDS; i++) {
     cambiarLed(i, bitRead(sharps[SHARP_CEN].get() >> 2, i) == true);
   }
-#ifdef DEBUG
+#if DEBUG
   delay(100);
 #endif
 }
