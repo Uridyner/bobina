@@ -200,7 +200,7 @@ void setupSharps() {
   for (int i = 0; i < NUM_SHARPS; i++) {
     debugPrint("Sensor distancia sharp ");
     pinMode(PINES_SHARPS[i], INPUT);
-    sharps[i].begin(SMOOTHED_EXPONENTIAL, LECTURAS_SHARP);
+    sharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);
     debugPrintln(i + 1);
   }
   debugPrintln("Pines de los sharps inicializados!");
