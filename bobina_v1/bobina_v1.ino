@@ -7,7 +7,7 @@ constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 255;
+constexpr uint8_t MOT_L_PWM_MAX = 200;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
@@ -15,7 +15,7 @@ constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 255;
+constexpr uint8_t MOT_R_PWM_MAX = 200;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
