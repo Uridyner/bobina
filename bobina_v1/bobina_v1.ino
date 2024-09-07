@@ -43,7 +43,7 @@ enum LadoCNY {
 constexpr uint8_t PINES_CNY[] = { A6, A4 };
 /// Numero de CNYs en la placa
 constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
-constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.4, 0.4 };
+constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.28, 0.3 };
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
