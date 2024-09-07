@@ -27,13 +27,13 @@ constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Distancia que usan los sharps para saber que detectan algo
-constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 35;
+constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 40;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 3;
+constexpr size_t LECTURAS_SHARP = 2;
 /// Lecturas por segundos de los sharp
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 50;
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 30;
 
 enum LadoCNY {
   CNY_IZQ = 0,
