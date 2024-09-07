@@ -63,7 +63,7 @@ constexpr float lecturaAVoltaje(uint16_t lectura) {
 constexpr uint16_t voltajeALectura(float voltaje) {
   return (uint16_t)((voltaje * (float)VALOR_MAX_ADC) / VOLTAJE_MAX_ADC);
 }
- 
+
 /// Pines de los LEDs
 constexpr uint8_t PINES_LEDS[] = { 5, 8, 4 };
 /// Numero de LEDs en la placa
@@ -77,7 +77,7 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 /// Tiempo que se espera antes de empezar a correr
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
-/// Tiempo que se espera antes de empezar a correr
+/// Tiempo que retrocede cuando detecta que está sobre el borde
 constexpr unsigned int TIEMPO_RETROCEDER_MS = 600;
 
 #define DEBUG 1
@@ -342,6 +342,7 @@ enum {
   ATRAS_IZQ,
   ATRAS_DER,
 } retrocediendo;
+
 unsigned long ultimoCambioRetrocediendo = -1;
 
 void loop() {
