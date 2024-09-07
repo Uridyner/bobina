@@ -80,6 +80,13 @@ constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 /// Tiempo que retrocede cuando detecta que está sobre el borde
 constexpr unsigned int TIEMPO_RETROCEDER_MS = 600;
 
+/// Tiempo que se espera antes de avanzar forzadamente cuando está girando
+/// para evitar que se pare la pelea
+constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 1000;
+
+/// Tiempo que avanza forzadamente para evitar que se pare la pelea
+constexpr unsigned int TIEMPO_AVANCE_FORZADO_MS = 100;
+
 #define DEBUG 1
 
 #if DEBUG
@@ -345,6 +352,8 @@ enum {
 
 unsigned long ultimoCambioRetrocediendo = -1;
 
+unsigned long ultimoAvance = -1;
+
 void loop() {
   leerCNY();
   if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
@@ -367,15 +376,36 @@ void loop() {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     adelante();
+    ultimoAvance = millis();
   } else if (sharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
     analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
     analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
-    izquierda();
+    if (millis() - ultimoAvance > TIEMPO_AVANCE_FORZADO_MS) {
+      adelante();
+      // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
+      // De esa manera el robot avanza `TIEMPO_AVANCE_FORZADO_MS`
+      // Está escrito así además asi no bloqueamos el código y no se cae si llega al borde
+      if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS + TIEMPO_AVANCE_FORZADO_MS) {
+        ultimoAvance = millis();
+      }
+    } else {
+      izquierda();
+    }
     retrocediendo = ATRAS_NADA;
   } else if (sharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
     analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
     analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
-    derecha();
+    if (millis() - ultimoAvance > TIEMPO_AVANCE_FORZADO_MS) {
+      adelante();
+      // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
+      // De esa manera el robot avanza `TIEMPO_AVANCE_FORZADO_MS`
+      // Está escrito así además asi no bloqueamos el código y no se cae si llega al borde
+      if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS + TIEMPO_AVANCE_FORZADO_MS) {
+        ultimoAvance = millis();
+      }
+    } else {
+      derecha();
+    }
     retrocediendo = ATRAS_NADA;
   } else {
     switch (retrocediendo) {
