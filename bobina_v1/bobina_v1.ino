@@ -31,7 +31,7 @@ constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 35;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 5;
+constexpr size_t LECTURAS_SHARP = 3;
 /// Lecturas por segundos de los sharp
 constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 50;
 
