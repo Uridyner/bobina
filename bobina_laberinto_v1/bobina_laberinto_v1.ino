@@ -23,7 +23,7 @@ enum LadoSharp {
   SHARP_DER = 2,
 };
 /// Pines de los sharps
-constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
+constexpr uint8_t PINES_SHARPS[] = {A7, A5, A3};
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Distancia que usan los sharps para saber que detectan algo
@@ -31,7 +31,7 @@ constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 15;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 20;
+constexpr size_t LECTURAS_SHARP = 1;
 /// Lecturas por segundos de los sharp
 constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 20;
 
@@ -40,10 +40,10 @@ enum LadoCNY {
   CNY_DER = 1,
 };
 /// Pines de los CNYs
-constexpr uint8_t PINES_CNY[] = { A6, A4 };
+constexpr uint8_t PINES_CNY[] = {A6, A4};
 /// Numero de CNYs en la placa
 constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
-constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.4, 0.4 };
+constexpr float ACTIVACIONES_CNY[NUM_CNY] = {0.4, 0.4};
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
@@ -65,12 +65,12 @@ constexpr uint16_t voltajeALectura(float voltaje) {
 }
 
 /// Pines de los LEDs
-constexpr uint8_t PINES_LEDS[] = { 5, 8, 4 };
+constexpr uint8_t PINES_LEDS[] = {5, 8, 4};
 /// Numero de LEDs en la placa
 constexpr size_t NUM_LEDS = sizeof(PINES_LEDS) / sizeof(PINES_LEDS[0]);
 
 /// Pines de los botones
-constexpr uint8_t PINES_BOTONES[] = { 2, 3 };
+constexpr uint8_t PINES_BOTONES[] = {2, 3};
 /// Numero de botones en la placa
 constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 
@@ -177,11 +177,12 @@ void setupMotores() {
 Smoothed<unsigned int> sharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
-Smoothed<unsigned int>* leerSharps() {
+Smoothed<unsigned int> *leerSharps() {
   if (millis() - ultimaLecturaSharps >= 1000 / FRECUENCIA_LECTURA_SHARP) {
     ultimaLecturaSharps = millis();
     for (size_t i = 0; i < NUM_SHARPS; i++) {
-      const unsigned int distancia = (unsigned int)round(17569.7 * pow(analogRead(PINES_SHARPS[i]), -1.2062));
+      const unsigned int distancia = (unsigned int)round(
+          17569.7 * pow(analogRead(PINES_SHARPS[i]), -1.2062));
       sharps[i].add(distancia);
       debugPrint("Sharp");
       debugPrint(i + 1);
@@ -208,11 +209,12 @@ void setupSharps() {
 
 float lecturasCNY[NUM_CNY];
 
-float* leerCNY() {
+float *leerCNY() {
   for (size_t i = 0; i < NUM_CNY; i++) {
     lecturasCNY[i] = 0;
     for (size_t j = 0; j < LECTURAS_CNY; j++) {
-      lecturasCNY[i] += lecturaAVoltaje(analogRead(PINES_CNY[i])) / LECTURAS_CNY;
+      lecturasCNY[i] +=
+          lecturaAVoltaje(analogRead(PINES_CNY[i])) / LECTURAS_CNY;
     }
     debugPrint("CNY");
     debugPrint(i + 1);
@@ -309,22 +311,20 @@ void loop() {
   bool sharpCentro = sharps[SHARP_CEN].get() <= DISTANCIA_ACTIVACION_SHARPS;
   bool sharpDerecho = sharps[SHARP_DER].get() <= DISTANCIA_ACTIVACION_SHARPS;
 
-  if (sharpIzquierdo && !sharpCentro && sharpDerecho) {
+  if (!sharpCentro) {
     adelante();
-  } else if (!sharpIzquierdo && sharpCentro && sharpDerecho) {
-    izquierda();
-  } else if (sharpIzquierdo && sharpCentro && !sharpDerecho) {
+  } else if (!sharpDerecho) {
     derecha();
-  } else if (!sharpCentro) {
-    adelante();
+  } else if (!sharpIzquierdo) {
+    izquierda();
   } else {
+    atras();
+    delay(200);
     derecha();
   }
+  delay(200);
 
   cambiarLed(0, sharpIzquierdo);
   cambiarLed(2, sharpCentro);
   cambiarLed(1, sharpDerecho);
-#if DEBUG
-  delay(100);
-#endif
 }
