@@ -7,7 +7,7 @@ constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 200;
+constexpr uint8_t MOT_L_PWM_MAX = 255;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
@@ -15,7 +15,7 @@ constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 200;
+constexpr uint8_t MOT_R_PWM_MAX = 255;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
@@ -118,18 +118,18 @@ void atras() {
 
 void izquierda() {
   debugPrintln("Izquierda");
-  digitalWrite(MOT_L_A, HIGH);
-  digitalWrite(MOT_L_B, LOW);
-  digitalWrite(MOT_R_A, LOW);
-  digitalWrite(MOT_R_B, HIGH);
-}
-
-void derecha() {
-  debugPrintln("Derecha");
   digitalWrite(MOT_L_A, LOW);
   digitalWrite(MOT_L_B, HIGH);
   digitalWrite(MOT_R_A, HIGH);
   digitalWrite(MOT_R_B, LOW);
+}
+
+void derecha() {
+  debugPrintln("Derecha");
+  digitalWrite(MOT_L_A, HIGH);
+  digitalWrite(MOT_L_B, LOW);
+  digitalWrite(MOT_R_A, LOW);
+  digitalWrite(MOT_R_B, HIGH);
 }
 
 void parada() {
@@ -378,8 +378,8 @@ void loop() {
     adelante();
     ultimoAvance = millis();
   } else if (sharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
-    analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
-    analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
+    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
       adelante();
       // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
@@ -393,8 +393,8 @@ void loop() {
     }
     retrocediendo = ATRAS_NADA;
   } else if (sharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
-    analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
-    analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
+    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
       adelante();
       // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
@@ -410,20 +410,22 @@ void loop() {
   } else {
     switch (retrocediendo) {
       case ATRAS_RECTO:
-        analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-        analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-        atras();
-        break;
       case ATRAS_DER:
-        analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
-        analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-        atras();
-        break;
       case ATRAS_IZQ:
         analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-        analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
+        analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
         atras();
         break;
+      // case ATRAS_DER:
+      //   analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
+      //   analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+      //   atras();
+      //   break;
+      // case ATRAS_IZQ:
+      //   analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+      //   analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
+      //   atras();
+      //   break;
       default:
         analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
         analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
@@ -451,4 +453,5 @@ void loop() {
 #if DEBUG
   delay(100);
 #endif
+  delay(25);
 }
