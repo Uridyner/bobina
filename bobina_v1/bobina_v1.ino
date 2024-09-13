@@ -28,13 +28,15 @@ constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Distancia que usan los sharps para saber que detectan algo
-constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 40;
+constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 18;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
 constexpr size_t LECTURAS_SHARP = 2;
 /// Lecturas por segundos de los sharp
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 30;
+///
+/// ! Desde que empezamos a usar la librería SharpIR esto se volvió inutil.S
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 16;
 
 enum LadoCNY {
   CNY_IZQ = 0,
@@ -48,7 +50,7 @@ constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.28, 0.3 };
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 3;
+constexpr size_t LECTURAS_CNY = 2;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -66,7 +68,7 @@ constexpr uint16_t voltajeALectura(float voltaje) {
 }
 
 /// Pines de los LEDs
-constexpr uint8_t PINES_LEDS[] = { 5, 8, 4 };
+constexpr uint8_t PINES_LEDS[] = { 5, 4, 8 };
 /// Numero de LEDs en la placa
 constexpr size_t NUM_LEDS = sizeof(PINES_LEDS) / sizeof(PINES_LEDS[0]);
 
@@ -176,9 +178,9 @@ void setupMotores() {
 }
 
 SharpIR sharps[NUM_SHARPS] = {
-  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
-  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
-  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
+  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[0]),
+  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[1]),
+  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[2]),
 };
 Smoothed<unsigned int> smoothedSharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
@@ -204,7 +206,6 @@ void setupSharps() {
   debugPrintln("Inicializando pines de los sharps...");
   for (int i = 0; i < NUM_SHARPS; i++) {
     debugPrint("Sensor distancia sharp ");
-    sharps[i] = SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[i]);
     smoothedSharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);
     debugPrintln(i + 1);
   }
@@ -364,25 +365,28 @@ void loop() {
   if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
     retrocediendo = ATRAS_NADA;
   }
-  if (retrocediendo == ATRAS_NADA) {
-    if (lecturasCNY[CNY_IZQ] <= ACTIVACIONES_CNY[CNY_IZQ] && lecturasCNY[CNY_DER] <= ACTIVACIONES_CNY[CNY_DER]) {
-      retrocediendo = ATRAS_RECTO;
-      ultimoCambioRetrocediendo = millis();
-    } else if (lecturasCNY[CNY_IZQ] <= ACTIVACIONES_CNY[CNY_IZQ] && lecturasCNY[CNY_DER] > ACTIVACIONES_CNY[CNY_DER]) {
-      retrocediendo = ATRAS_DER;
-      ultimoCambioRetrocediendo = millis();
-    } else if (lecturasCNY[CNY_IZQ] > ACTIVACIONES_CNY[CNY_IZQ] && lecturasCNY[CNY_DER] <= ACTIVACIONES_CNY[CNY_DER]) {
-      retrocediendo = ATRAS_IZQ;
-      ultimoCambioRetrocediendo = millis();
-    }
+  bool cnyIzq = lecturasCNY[CNY_IZQ] <= ACTIVACIONES_CNY[CNY_IZQ];
+  bool cnyDer = lecturasCNY[CNY_DER] <= ACTIVACIONES_CNY[CNY_DER];
+  if (cnyIzq && cnyDer) {
+    retrocediendo = ATRAS_RECTO;
+    ultimoCambioRetrocediendo = millis();
+  } else if (cnyIzq && !cnyDer) {
+    retrocediendo = ATRAS_DER;
+    ultimoCambioRetrocediendo = millis();
+  } else if (!cnyIzq && cnyDer) {
+    retrocediendo = ATRAS_IZQ;
+    ultimoCambioRetrocediendo = millis();
   }
   leerSharps();
-  if (smoothedSharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
+  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS;
+  bool sharpCen = smoothedSharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS;
+  bool sharpDer = smoothedSharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS;
+  if (sharpCen && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, 255);
     analogWrite(MOT_R_PWM, 255);
     adelante();
     ultimoAvance = millis();
-  } else if (smoothedSharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
+  } else if (sharpIzq) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -396,8 +400,7 @@ void loop() {
     } else {
       izquierda();
     }
-    retrocediendo = ATRAS_NADA;
-  } else if (smoothedSharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
+  } else if (sharpDer) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -411,7 +414,6 @@ void loop() {
     } else {
       derecha();
     }
-    retrocediendo = ATRAS_NADA;
   } else {
     switch (retrocediendo) {
       case ATRAS_RECTO:
@@ -452,11 +454,13 @@ void loop() {
         retrocediendo = ATRAS_NADA;
     }
   }
-  for (size_t i = 0; i < NUM_LEDS; i++) {
-    cambiarLed(i, bitRead(smoothedSharps[SHARP_CEN].get() >> 2, i) == true);
-  }
+  cambiarLed(0, sharpIzq);
+  cambiarLed(1, sharpCen);
+  cambiarLed(2, sharpDer);
+  // for (size_t i = 0; i < NUM_LEDS; i++) {
+  //   cambiarLed(i, bitRead(smoothedSharps[SHARP_CEN].get() >> 1, i) == true);
+  // }
 #if DEBUG
   delay(100);
 #endif
-  delay(25);
 }
