@@ -1,4 +1,5 @@
 #include <Smoothed.h>
+#include <SharpIR.h>
 
 /// Motor izquierdo, adelante
 constexpr uint8_t MOT_L_A = 7;
@@ -174,15 +175,19 @@ void setupMotores() {
   debugPrintln("Velocidad de los motores establecidas!");
 }
 
-Smoothed<unsigned int> sharps[NUM_SHARPS];
+SharpIR sharps[NUM_SHARPS] = {
+  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
+  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
+  SharpIR(SharpIR::GP2Y0A41SK0F, 0),
+};
+Smoothed<unsigned int> smoothedSharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
 Smoothed<unsigned int>* leerSharps() {
   if (millis() - ultimaLecturaSharps >= 1000 / FRECUENCIA_LECTURA_SHARP) {
     ultimaLecturaSharps = millis();
     for (size_t i = 0; i < NUM_SHARPS; i++) {
-      const unsigned int distancia = (unsigned int)round(17569.7 * pow(analogRead(PINES_SHARPS[i]), -1.2062));
-      sharps[i].add(distancia);
+      smoothedSharps[i].add(sharps[i].getDistance());
       debugPrint("Sharp");
       debugPrint(i + 1);
       debugPrint(':');
@@ -192,15 +197,15 @@ Smoothed<unsigned int>* leerSharps() {
     debugPrintln();
     ultimaLecturaSharps = millis();
   }
-  return sharps;
+  return smoothedSharps;
 }
 
 void setupSharps() {
   debugPrintln("Inicializando pines de los sharps...");
   for (int i = 0; i < NUM_SHARPS; i++) {
     debugPrint("Sensor distancia sharp ");
-    pinMode(PINES_SHARPS[i], INPUT);
-    sharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);
+    sharps[i] = SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[i]);
+    smoothedSharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);
     debugPrintln(i + 1);
   }
   debugPrintln("Pines de los sharps inicializados!");
@@ -372,12 +377,12 @@ void loop() {
     }
   }
   leerSharps();
-  if (sharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
+  if (smoothedSharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, 255);
     analogWrite(MOT_R_PWM, 255);
     adelante();
     ultimoAvance = millis();
-  } else if (sharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
+  } else if (smoothedSharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -392,7 +397,7 @@ void loop() {
       izquierda();
     }
     retrocediendo = ATRAS_NADA;
-  } else if (sharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
+  } else if (smoothedSharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -448,7 +453,7 @@ void loop() {
     }
   }
   for (size_t i = 0; i < NUM_LEDS; i++) {
-    cambiarLed(i, bitRead(sharps[SHARP_CEN].get() >> 2, i) == true);
+    cambiarLed(i, bitRead(smoothedSharps[SHARP_CEN].get() >> 2, i) == true);
   }
 #if DEBUG
   delay(100);
