@@ -28,15 +28,15 @@ constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Distancia que usan los sharps para saber que detectan algo
-constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 18;
+constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 20;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 2;
+constexpr size_t LECTURAS_SHARP = 5;
 /// Lecturas por segundos de los sharp
 ///
 /// ! Desde que empezamos a usar la librería SharpIR esto se volvió inutil.S
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 16;
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 25;
 
 enum LadoCNY {
   CNY_IZQ = 0,
@@ -46,11 +46,10 @@ enum LadoCNY {
 constexpr uint8_t PINES_CNY[] = { A6, A4 };
 /// Numero de CNYs en la placa
 constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
-constexpr float ACTIVACIONES_CNY[NUM_CNY] = { 0.28, 0.3 };
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 2;
+constexpr size_t LECTURAS_CNY = 1;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -81,11 +80,11 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
 /// Tiempo que retrocede cuando detecta que está sobre el borde
-constexpr unsigned int TIEMPO_RETROCEDER_MS = 450;
+constexpr unsigned int TIEMPO_RETROCEDER_MS = 400;
 
 /// Tiempo que se espera antes de avanzar forzadamente cuando está girando
 /// para evitar que se pare la pelea
-constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 1000;
+constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 3000;
 
 /// Tiempo que avanza forzadamente para evitar que se pare la pelea
 constexpr unsigned int TIEMPO_AVANCE_FORZADO_MS = 350;
@@ -193,7 +192,7 @@ Smoothed<unsigned int>* leerSharps() {
       debugPrint("Sharp");
       debugPrint(i + 1);
       debugPrint(':');
-      debugPrint(sharps[i].get());
+      debugPrint(sharps[i].getDistance());
       debugPrint('\t');
     }
     debugPrintln();
@@ -212,6 +211,7 @@ void setupSharps() {
   debugPrintln("Pines de los sharps inicializados!");
 }
 
+float activacionesCNY[NUM_CNY] = { 0, 0 };
 float lecturasCNY[NUM_CNY];
 
 float* leerCNY() {
@@ -324,6 +324,9 @@ void setup() {
   unsigned char ultimoDigitoTiempoAnterior = -1;
 #endif
 
+  unsigned long ultimaLecturaCNYs = millis();
+  unsigned int numeroLecturasCNYs = 0;
+
   while (millis() - tiempoComienzo < TIEMPO_ESPERA_MS) {
     unsigned long segundosRestantes = (TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 1000;
 
@@ -332,12 +335,18 @@ void setup() {
     }
     cambiarLed(NUM_LEDS - 1, giroPreferido == GIRO_IZQ);
 
+    if (millis() - ultimaLecturaCNYs > 20) {
+      leerCNY();
+      for (size_t i = 0; i < NUM_CNY; i++) {
+        activacionesCNY[i] += lecturasCNY[i];
+      }
+      ultimaLecturaCNYs = millis();
+      numeroLecturasCNYs++;
+    }
+
+
 #if DEBUG
     const unsigned char ultimoDigitoTiempo = ((TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 100);
-    char pluralSegundos = "s";
-    if (segundosRestantes == 1 && ultimoDigitoTiempo == 0) {
-      pluralSegundos = 0;
-    }
     char bufferTextoTiempoEspera[128];
     sprintf(bufferTextoTiempoEspera, "Comenzando en %d.%1d segundo%c", segundosRestantes, ultimoDigitoTiempo);
     debugPrintln(bufferTextoTiempoEspera);
@@ -345,8 +354,21 @@ void setup() {
 #endif
   }
 
+  debugPrintln("Activaciones CNYs");
+  for (size_t i = 0; i < NUM_CNY; i++) {
+    activacionesCNY[i] /= numeroLecturasCNYs;
+    activacionesCNY[i] /= 2;
+    debugPrint(activacionesCNY[i]);
+    debugPrint('\t');
+  }
+  debugPrintln();
+
   cambiarLed(0, giroPreferido == GIRO_IZQ);
   cambiarLed(1, giroPreferido == GIRO_DER);
+
+#if DEBUG
+  delay(1000);
+#endif
 }
 
 enum {
@@ -361,12 +383,13 @@ unsigned long ultimoCambioRetrocediendo = -1;
 unsigned long ultimoAvance = -1;
 
 void loop() {
+  leerSharps();
   leerCNY();
   if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
     retrocediendo = ATRAS_NADA;
   }
-  bool cnyIzq = lecturasCNY[CNY_IZQ] <= ACTIVACIONES_CNY[CNY_IZQ];
-  bool cnyDer = lecturasCNY[CNY_DER] <= ACTIVACIONES_CNY[CNY_DER];
+  bool cnyIzq = lecturasCNY[CNY_IZQ] <= activacionesCNY[CNY_IZQ];
+  bool cnyDer = lecturasCNY[CNY_DER] <= activacionesCNY[CNY_DER];
   if (cnyIzq && cnyDer) {
     retrocediendo = ATRAS_RECTO;
     ultimoCambioRetrocediendo = millis();
@@ -377,7 +400,6 @@ void loop() {
     retrocediendo = ATRAS_IZQ;
     ultimoCambioRetrocediendo = millis();
   }
-  leerSharps();
   bool sharpIzq = smoothedSharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS;
   bool sharpCen = smoothedSharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS;
   bool sharpDer = smoothedSharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS;
@@ -386,7 +408,7 @@ void loop() {
     analogWrite(MOT_R_PWM, 255);
     adelante();
     ultimoAvance = millis();
-  } else if (sharpIzq) {
+  } else if (sharpIzq && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -400,7 +422,7 @@ void loop() {
     } else {
       izquierda();
     }
-  } else if (sharpDer) {
+  } else if (sharpDer && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
@@ -420,8 +442,11 @@ void loop() {
       case ATRAS_DER:
       case ATRAS_IZQ:
         analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-        analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-        atras();
+        analogWrite(MOT_R_PWM, MOT_L_PWM_MAX);
+        digitalWrite(MOT_L_A, LOW);
+        digitalWrite(MOT_L_B, HIGH);
+        digitalWrite(MOT_R_A, LOW);
+        digitalWrite(MOT_R_B, HIGH);
         break;
       // case ATRAS_DER:
       //   analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
@@ -434,8 +459,8 @@ void loop() {
       //   atras();
       //   break;
       default:
-        analogWrite(MOT_L_PWM, 3 * (MOT_L_PWM_MAX / 4));
-        analogWrite(MOT_R_PWM, 3 * (MOT_R_PWM_MAX / 4));
+        analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+        analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
         if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
           adelante();
           // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
