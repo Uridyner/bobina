@@ -24,7 +24,7 @@ enum LadoSharp {
   SHARP_DER = 2,
 };
 /// Pines de los sharps
-constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
+constexpr uint8_t PINES_SHARPS[] = { A5, A3, A7 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los sharps.
@@ -424,6 +424,7 @@ void loop() {
   } else if (sharpIzq && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+    giroPreferido = GIRO_IZQ;
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
       adelante();
       // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
@@ -438,6 +439,7 @@ void loop() {
   } else if (sharpDer && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+    giroPreferido = GIRO_DER; 
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
       adelante();
       // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
