@@ -8,7 +8,7 @@ constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 255;
+constexpr uint8_t MOT_L_PWM_MAX = 150;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
@@ -16,7 +16,7 @@ constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 255;
+constexpr uint8_t MOT_R_PWM_MAX = 150;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
@@ -27,8 +27,6 @@ enum LadoSharp {
 constexpr uint8_t PINES_SHARPS[] = { A7, A5, A3 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
-/// Distancia que usan los sharps para saber que detectan algo
-constexpr unsigned int DISTANCIA_ACTIVACION_SHARPS = 20;
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
@@ -36,7 +34,7 @@ constexpr size_t LECTURAS_SHARP = 5;
 /// Lecturas por segundos de los sharp
 ///
 /// ! Desde que empezamos a usar la librería SharpIR esto se volvió inutil.S
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 25;
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 30;
 
 enum LadoCNY {
   CNY_IZQ = 0,
@@ -80,7 +78,7 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
 /// Tiempo que retrocede cuando detecta que está sobre el borde
-constexpr unsigned int TIEMPO_RETROCEDER_MS = 400;
+constexpr unsigned int TIEMPO_RETROCEDER_MS = 350;
 
 /// Tiempo que se espera antes de avanzar forzadamente cuando está girando
 /// para evitar que se pare la pelea
@@ -120,18 +118,18 @@ void atras() {
 
 void izquierda() {
   debugPrintln("Izquierda");
-  digitalWrite(MOT_L_A, LOW);
-  digitalWrite(MOT_L_B, HIGH);
-  digitalWrite(MOT_R_A, HIGH);
-  digitalWrite(MOT_R_B, LOW);
-}
-
-void derecha() {
-  debugPrintln("Derecha");
   digitalWrite(MOT_L_A, HIGH);
   digitalWrite(MOT_L_B, LOW);
   digitalWrite(MOT_R_A, LOW);
   digitalWrite(MOT_R_B, HIGH);
+}
+
+void derecha() {
+  debugPrintln("Derecha");
+  digitalWrite(MOT_L_A, LOW);
+  digitalWrite(MOT_L_B, HIGH);
+  digitalWrite(MOT_R_A, HIGH);
+  digitalWrite(MOT_R_B, LOW);
 }
 
 void parada() {
@@ -176,23 +174,20 @@ void setupMotores() {
   debugPrintln("Velocidad de los motores establecidas!");
 }
 
-SharpIR sharps[NUM_SHARPS] = {
-  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[0]),
-  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[1]),
-  SharpIR(SharpIR::GP2Y0A41SK0F, PINES_SHARPS[2]),
-};
-Smoothed<unsigned int> smoothedSharps[NUM_SHARPS];
+unsigned long activacionesSharp[NUM_SHARPS] = { 0, 0, 0 };
+Smoothed<uint16_t> smoothedSharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
 Smoothed<unsigned int>* leerSharps() {
   if (millis() - ultimaLecturaSharps >= 1000 / FRECUENCIA_LECTURA_SHARP) {
     ultimaLecturaSharps = millis();
     for (size_t i = 0; i < NUM_SHARPS; i++) {
-      smoothedSharps[i].add(sharps[i].getDistance());
+      uint16_t lectura = analogRead(PINES_SHARPS[i]);
+      smoothedSharps[i].add(lectura);
       debugPrint("Sharp");
       debugPrint(i + 1);
       debugPrint(':');
-      debugPrint(sharps[i].getDistance());
+      debugPrint(lectura);
       debugPrint('\t');
     }
     debugPrintln();
@@ -205,6 +200,7 @@ void setupSharps() {
   debugPrintln("Inicializando pines de los sharps...");
   for (int i = 0; i < NUM_SHARPS; i++) {
     debugPrint("Sensor distancia sharp ");
+    pinMode(PINES_SHARPS[i], INPUT);
     smoothedSharps[i].begin(SMOOTHED_AVERAGE, LECTURAS_SHARP);
     debugPrintln(i + 1);
   }
@@ -326,6 +322,8 @@ void setup() {
 
   unsigned long ultimaLecturaCNYs = millis();
   unsigned int numeroLecturasCNYs = 0;
+  unsigned long ultimaLecturaSharps = millis();
+  unsigned int numeroLecturasSharps = 0;
 
   while (millis() - tiempoComienzo < TIEMPO_ESPERA_MS) {
     unsigned long segundosRestantes = (TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 1000;
@@ -344,14 +342,20 @@ void setup() {
       numeroLecturasCNYs++;
     }
 
-
-#if DEBUG
-    const unsigned char ultimoDigitoTiempo = ((TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 100);
-    char bufferTextoTiempoEspera[128];
-    sprintf(bufferTextoTiempoEspera, "Comenzando en %d.%1d segundo%c", segundosRestantes, ultimoDigitoTiempo);
-    debugPrintln(bufferTextoTiempoEspera);
-    ultimoDigitoTiempoAnterior = ultimoDigitoTiempo;
-#endif
+    if (millis() - ultimaLecturaSharps > 40 && segundosRestantes <= 2) {
+      for (size_t i = 0; i < NUM_SHARPS; i++) {
+        unsigned long lectura = analogRead(PINES_SHARPS[i]);
+        activacionesSharp[i] += lectura;
+        debugPrint("Sharp");
+        debugPrint(i + 1);
+        debugPrint(':');
+        debugPrint(lectura);
+        debugPrint('\t');
+      }
+      debugPrintln();
+      ultimaLecturaSharps = millis();
+      numeroLecturasSharps++;
+    }
   }
 
   debugPrintln("Activaciones CNYs");
@@ -359,6 +363,15 @@ void setup() {
     activacionesCNY[i] /= numeroLecturasCNYs;
     activacionesCNY[i] /= 2;
     debugPrint(activacionesCNY[i]);
+    debugPrint('\t');
+  }
+  debugPrintln();
+
+  debugPrintln("Activaciones Sharps");
+  for (size_t i = 0; i < NUM_SHARPS; i++) {
+    activacionesSharp[i] /= numeroLecturasSharps;
+    activacionesSharp[i] += 80;
+    debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
   debugPrintln();
@@ -400,9 +413,9 @@ void loop() {
     retrocediendo = ATRAS_IZQ;
     ultimoCambioRetrocediendo = millis();
   }
-  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() < DISTANCIA_ACTIVACION_SHARPS;
-  bool sharpCen = smoothedSharps[SHARP_CEN].get() < DISTANCIA_ACTIVACION_SHARPS;
-  bool sharpDer = smoothedSharps[SHARP_DER].get() < DISTANCIA_ACTIVACION_SHARPS;
+  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() > activacionesSharp[SHARP_IZQ];
+  bool sharpCen = smoothedSharps[SHARP_CEN].get() > activacionesSharp[SHARP_CEN];
+  bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
   if (sharpCen && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, 255);
     analogWrite(MOT_R_PWM, 255);
