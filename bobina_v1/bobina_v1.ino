@@ -269,6 +269,11 @@ enum {
   GIRO_IZQ,
 } giroPreferido;
 
+enum {
+    ESTRATEGIA_BASICA,
+    ESTRATEGIA_PASITOS,
+} estrategia;
+
 void setup() {
   debugSetup();
 
@@ -297,15 +302,17 @@ void setup() {
   }
   setupBotones();
 
-  unsigned long ultimoCambioLeds = millis();
-
-  while (estaPresionado(0) == false && estaPresionado(1) == false) {
-    if (millis() - ultimoCambioLeds > 125) {
+  while (estaPresionado(0) != true && estaPresionado(1) != true) {
       for (size_t i = 0; i < NUM_LEDS - 1; i++) {
-        cambiarLed(i, rand() % 2);
-      }
-      ultimoCambioLeds = millis();
-    }
+        unsigned char valor = (estrategia / pow(3, i)) % 3;
+        if (valor == 0) {
+          cambiarLed(i, false);
+        } else if (valor == 1) {
+          cambiarLed(i, (millis() / 200) < 100);
+        } else if (valor == 2) {
+          cambiarLed(i, true);
+        }
+     }
   }
 
   if (estaPresionado(0)) {
@@ -398,7 +405,14 @@ unsigned long ultimoAvance = -1;
 void loop() {
   leerSharps();
   leerCNY();
-  if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
+  
+#if DEBUG
+  delay(100);
+#endif
+}
+
+void estrategiaBasica() {
+    if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
     retrocediendo = ATRAS_NADA;
   }
   bool cnyIzq = lecturasCNY[CNY_IZQ] <= activacionesCNY[CNY_IZQ];
@@ -500,7 +514,4 @@ void loop() {
   // for (size_t i = 0; i < NUM_LEDS; i++) {
   //   cambiarLed(i, bitRead(smoothedSharps[SHARP_CEN].get() >> 1, i) == true);
   // }
-#if DEBUG
-  delay(100);
-#endif
 }
