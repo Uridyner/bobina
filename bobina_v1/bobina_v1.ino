@@ -65,7 +65,7 @@ constexpr uint16_t voltajeALectura(float voltaje) {
 }
 
 /// Pines de los LEDs
-constexpr uint8_t PINES_LEDS[] = { 5, 4, 8 };
+constexpr uint8_t PINES_LEDS[] = { 8, 5, 4 };
 /// Numero de LEDs en la placa
 constexpr size_t NUM_LEDS = sizeof(PINES_LEDS) / sizeof(PINES_LEDS[0]);
 
@@ -78,7 +78,7 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
 /// Tiempo que retrocede cuando detecta que está sobre el borde
-constexpr unsigned int TIEMPO_RETROCEDER_MS = 350;
+constexpr unsigned int TIEMPO_RETROCEDER_MS = 300;
 
 /// Tiempo que se espera antes de avanzar forzadamente cuando está girando
 /// para evitar que se pare la pelea
@@ -87,7 +87,7 @@ constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 3000;
 /// Tiempo que avanza forzadamente para evitar que se pare la pelea
 constexpr unsigned int TIEMPO_AVANCE_FORZADO_MS = 350;
 
-#define DEBUG 1
+// #define DEBUG 1
 
 #if DEBUG
 #define debugSetup() Serial.begin(115200)
@@ -174,7 +174,7 @@ void setupMotores() {
   debugPrintln("Velocidad de los motores establecidas!");
 }
 
-unsigned long activacionesSharp[NUM_SHARPS] = { 0, 0, 0 };
+unsigned long activacionesSharp[NUM_SHARPS] = { 55, 55, 55 };
 Smoothed<uint16_t> smoothedSharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
@@ -380,7 +380,12 @@ void setup() {
   debugPrintln("Activaciones Sharps");
   for (size_t i = 0; i < NUM_SHARPS; i++) {
     activacionesSharp[i] /= numeroLecturasSharps;
-    activacionesSharp[i] *= 2;
+    activacionesSharp[i] *= 2.3;
+    if (i == SHARP_IZQ) {
+      activacionesSharp[i] = min(activacionesSharp[i], 1800);
+    } else {
+      activacionesSharp[i] = min(activacionesSharp[i], 80);
+    }
     debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
