@@ -2,17 +2,17 @@
 #include <SharpIR.h>
 
 /// Motor izquierdo, adelante
-constexpr uint8_t MOT_L_A = 7;
+constexpr uint8_t MOT_L_A = 6;
 /// Motor izquierdo, atrás
-constexpr uint8_t MOT_L_B = 6;
+constexpr uint8_t MOT_L_B = 7;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
 constexpr uint8_t MOT_L_PWM_MAX = 150;
 /// Motor derecho, adelante
-constexpr uint8_t MOT_R_A = 9;
+constexpr uint8_t MOT_R_A = 12;
 /// Motor derecho, atrás
-constexpr uint8_t MOT_R_B = 12;
+constexpr uint8_t MOT_R_B = 9;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
@@ -24,7 +24,7 @@ enum LadoSharp {
   SHARP_DER = 2,
 };
 /// Pines de los sharps
-constexpr uint8_t PINES_SHARPS[] = { A5, A3, A7 };
+constexpr uint8_t PINES_SHARPS[] = { A7, A6, A5 };
 /// Numero de sharps en la placa
 constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los sharps.
@@ -41,7 +41,7 @@ enum LadoCNY {
   CNY_DER = 1,
 };
 /// Pines de los CNYs
-constexpr uint8_t PINES_CNY[] = { A6, A4 };
+constexpr uint8_t PINES_CNY[] = { A3, A4 };
 /// Numero de CNYs en la placa
 constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los CNYs.
@@ -87,7 +87,7 @@ constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 3000;
 /// Tiempo que avanza forzadamente para evitar que se pare la pelea
 constexpr unsigned int TIEMPO_AVANCE_FORZADO_MS = 350;
 
-// #define DEBUG 1
+#define DEBUG 1
 
 #if DEBUG
 #define debugSetup() Serial.begin(115200)
@@ -261,7 +261,16 @@ void setupBotones() {
 }
 
 inline bool estaPresionado(size_t boton) {
-  return digitalRead(PINES_BOTONES[boton]) == LOW;
+  bool valor = digitalRead(PINES_BOTONES[boton]);
+  debugPrint("Boton ");
+  debugPrint(boton);
+  debugPrint(": ");
+  debugPrintln(valor);
+  if (boton == 0) {
+    return valor == HIGH;
+  } else if (boton == 1) {
+    return valor == LOW;
+  }
 }
 
 enum {
@@ -299,7 +308,7 @@ void setup() {
 
   unsigned long ultimoCambioLeds = millis();
 
-  while (estaPresionado(0) == false && estaPresionado(1) == false) {
+  while (estaPresionado(1) == false /* && estaPresionado(1) == false */) {
     if (millis() - ultimoCambioLeds > 125) {
       for (size_t i = 0; i < NUM_LEDS - 1; i++) {
         cambiarLed(i, rand() % 2);
@@ -308,11 +317,12 @@ void setup() {
     }
   }
 
-  if (estaPresionado(0)) {
-    giroPreferido = GIRO_IZQ;
-  } else if (estaPresionado(1)) {
+  if (estaPresionado(1)) {
     giroPreferido = GIRO_DER;
   }
+  //  else if (estaPresionado(1)) {
+  //   giroPreferido = GIRO_DER;
+  // }
 
   unsigned long tiempoComienzo = millis();
 
@@ -321,9 +331,9 @@ void setup() {
 #endif
 
   unsigned long ultimaLecturaCNYs = millis();
-  unsigned int numeroLecturasCNYs = 0;
+  unsigned int numeroLecturasCNYs = 1;
   unsigned long ultimaLecturaSharps = millis();
-  unsigned int numeroLecturasSharps = 0;
+  unsigned int numeroLecturasSharps = 1;
 
   while (millis() - tiempoComienzo < TIEMPO_ESPERA_MS) {
     unsigned long segundosRestantes = (TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 1000;
@@ -370,7 +380,7 @@ void setup() {
   debugPrintln("Activaciones Sharps");
   for (size_t i = 0; i < NUM_SHARPS; i++) {
     activacionesSharp[i] /= numeroLecturasSharps;
-    activacionesSharp[i] += 80;
+    activacionesSharp[i] *= 2;
     debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
@@ -397,6 +407,11 @@ unsigned long ultimoAvance = -1;
 
 void loop() {
   leerSharps();
+  debugPrint(activacionesSharp[SHARP_IZQ]);
+  debugPrint('\t');
+  debugPrint(activacionesSharp[SHARP_CEN]);
+  debugPrint('\t');
+  debugPrintln(activacionesSharp[SHARP_DER]);
   leerCNY();
   if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
     retrocediendo = ATRAS_NADA;
@@ -439,7 +454,7 @@ void loop() {
   } else if (sharpDer && retrocediendo == ATRAS_NADA) {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
     analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-    giroPreferido = GIRO_DER; 
+    giroPreferido = GIRO_DER;
     if (millis() - ultimoAvance > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
       adelante();
       // Retrazar que se cambie el valor de ultimoAvance `TIEMPO_AVANCE_FORZADO_MS` milisegundos.
