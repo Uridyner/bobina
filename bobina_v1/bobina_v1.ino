@@ -382,7 +382,7 @@ void setup() {
     activacionesSharp[i] /= numeroLecturasSharps;
     activacionesSharp[i] *= 2.3;
     if (i == SHARP_IZQ) {
-      activacionesSharp[i] = min(activacionesSharp[i], 1800);
+      activacionesSharp[i] = min(activacionesSharp[i], 180);
     } else {
       activacionesSharp[i] = min(activacionesSharp[i], 80);
     }
