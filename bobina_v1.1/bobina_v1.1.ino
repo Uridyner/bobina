@@ -1,5 +1,4 @@
 #include <Smoothed.h>
-#include <SharpIR.h>
 
 /// Motor izquierdo, adelante
 constexpr uint8_t MOT_L_A = 6;
@@ -78,7 +77,7 @@ constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 
 /// Tiempo que retrocede cuando detecta que está sobre el borde
-constexpr unsigned int TIEMPO_RETROCEDER_MS = 300;
+constexpr unsigned int TIEMPO_RETROCEDER_MS = 200;
 
 /// Tiempo que se espera antes de avanzar forzadamente cuando está girando
 /// para evitar que se pare la pelea
@@ -315,7 +314,7 @@ void setup() {
   // Cambiar estado o salir si se mantuvo por 1000 ms
   while (estaPresionado(1) == false && ultimoEstadoBoton == true && millis() - ultimaPresionBoton > 1000) {
     for (size_t i = 0; i < NUM_LEDS - 1; i++) {
-      unsigned char valor = (estrategia / pow(3, i)) % 3;
+      unsigned char valor = (estrategia / (int)pow(3, i)) % 3;
       if (valor == 0) {
         cambiarLed(i, false);
       } else if (valor == 1) {
@@ -418,24 +417,58 @@ unsigned long ultimoRetroceso = -1;
 
 unsigned long siguienteTiempoAvance = -1;
 
-enum Estado {
-  ADELANTE,
-  GIRAR_DERECHA,
-  GIRAR_IZQUIERDA,
-  RETROCEDER,
-} estado;
+/// Literalmente solo buscar y matar
+void estrategiaBasica(bool girarDerechaPorDefecto) {
+  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() > activacionesSharp[SHARP_IZQ];
+  bool sharpCen = smoothedSharps[SHARP_CEN].get() > activacionesSharp[SHARP_CEN];
+  bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
 
-void cambiarEstado(Estado estadoNuevo) {
-  if (estado == estadoNuevo) {
-    return;
+  /// Último tiempo en milisegundos que empece a detectar algo en el sharp del centro
+  static unsigned long ultimoTiempoDeteccionCentro = millis();
+  /// Si la última vez que corrí detecté algo en el sharp del centro
+  static bool ultimoDetectandoCentro = false;
+
+  if (sharpCen) {
+    // Si acabo de detectar algo en el sharp del centro
+    if (ultimoDetectandoCentro == false) {
+      ultimoTiempoDeteccionCentro = millis();
+    }
+    if (millis() - ultimoTiempoDeteccionCentro > 1000) {
+      analogWrite(MOT_L_PWM, 255);
+      analogWrite(MOT_R_PWM, 255);
+    } else {
+      analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+      analogWrite(MOT_R_PWM, MOT_L_PWM_MAX);
+    }
+    adelante();
+  } else {
+    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+    analogWrite(MOT_R_PWM, MOT_L_PWM_MAX);
+    if (girarDerechaPorDefecto) {
+      if (sharpIzq) {
+        izquierda();
+      } else {
+        derecha();
+      }
+    } else {
+      if (sharpDer) {
+        derecha();
+      } else {
+        izquierda();
+      }
+    }
   }
-  unsigned long tiempo = millis();
-  if (estado == RETROCEDER) {
-    ultimoRetroceso = tiempo;
-    siguienteTiempoAvance = tiempo + TIEMPO_ESPERA_AVANCE_FORZADO_MS;
-  }
-  estado = estadoNuevo;
+
+  ultimoDetectandoAdelante = sharpCen;
 }
+
+void estrategiaPasitos() {
+  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() > activacionesSharp[SHARP_IZQ];
+  bool sharpCen = smoothedSharps[SHARP_CEN].get() > activacionesSharp[SHARP_CEN];
+  bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
+}
+
+bool retrocediendo = false;
 
 void loop() {
   leerSharps();
@@ -446,77 +479,31 @@ void loop() {
   debugPrintln(activacionesSharp[SHARP_DER]);
 
   leerCNY();
-  if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
-  }
+  debugPrint(lecturasCNY[CNY_IZQ]);
+  debugPrint('\t');
+  debugPrintln(lecturasCNY[CNY_DER]);
 
   bool cnyIzq = lecturasCNY[CNY_IZQ] <= activacionesCNY[CNY_IZQ];
   bool cnyDer = lecturasCNY[CNY_DER] <= activacionesCNY[CNY_DER];
   if (cnyIzq || cnyDer) {
-    cambiarEstado(RETROCEDER);
+    ultimoCambioRetrocediendo = millis();
+    retrocediendo = true;
   }
 
-  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() > activacionesSharp[SHARP_IZQ];
-  bool sharpCen = smoothedSharps[SHARP_CEN].get() > activacionesSharp[SHARP_CEN];
-  bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
-
-  unsigned long tiempo = millis();
-
-  switch (estado) {
-    case ADELANTE:
-      if (estrategia == PASITOS) {
-        if (tiempo > siguienteTiempoAvance) {
-          if (tiempo > siguienteTiempoAvance + TIEMPO_AVANCE_FORZADO_MS) {
-            siguienteTiempoAvance = tiempo + TIEMPO_ESPERA_AVANCE_FORZADO_MS;
-          }
-          analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-          analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-        } else {
-          analogWrite(MOT_L_PWM, 10);
-          analogWrite(MOT_R_PWM, 10);
-        }
-      } else {
-        analogWrite(MOT_L_PWM, 255);
-        analogWrite(MOT_R_PWM, 255);
-      }
-      break;
-    case GIRAR_DERECHA:
-    case GIRAR_IZQUIERDA:
-    case RETROCEDER:
-      analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-      analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
-      break;
-  }
-
-  if (millis() > siguienteTiempoAvance) {
-    cambiarEstado(ADELANTE);
+  if (retrocediendo) {
+    if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
+      retrocediendo = false;
+    }
   } else {
     switch (estrategia) {
       case BASICA_DER:
-        if (sharpCen) {
-          cambiarEstado(ADELANTE);
-        } else if (sharpIzq) {
-          cambiarEstado(GIRAR_IZQUIERDA);
-        } else {
-          cambiarEstado(GIRAR_DERECHA);
-        }
+        estrategiaBasica(false);
         break;
       case BASICA_IZQ:
-        if (sharpCen) {
-          cambiarEstado(ADELANTE);
-        } else if (sharpDer) {
-          cambiarEstado(GIRAR_DERECHA);
-        } else {
-          cambiarEstado(GIRAR_IZQUIERDA);
-        }
+        estrategiaBasica(true);
         break;
       case PASITOS:
-        if (sharpDer) {
-          cambiarEstado(GIRAR_DERECHA);
-        } else if (sharpIzq) {
-          cambiarEstado(GIRAR_IZQUIERDA);
-        } else {
-          cambiarEstado(ADELANTE);
-        }
+        estrategiaBasica(true);
         break;
     }
   }
