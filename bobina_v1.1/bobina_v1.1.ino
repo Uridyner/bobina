@@ -1,17 +1,17 @@
 #include <Smoothed.h>
 
 /// Motor izquierdo, adelante
-constexpr uint8_t MOT_L_A = 6;
+constexpr uint8_t MOT_L_A = 7;
 /// Motor izquierdo, atrás
-constexpr uint8_t MOT_L_B = 7;
+constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
 constexpr uint8_t MOT_L_PWM_MAX = 120;
 /// Motor derecho, adelante
-constexpr uint8_t MOT_R_A = 12;
+constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
-constexpr uint8_t MOT_R_B = 9;
+constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
@@ -439,12 +439,12 @@ void estrategiaBasica(bool girarDerechaPorDefecto) {
       analogWrite(MOT_R_PWM, 255);
     } else {
       analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-      analogWrite(MOT_R_PWM, MOT_L_PWM_MAX);
+      analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     }
     adelante();
   } else {
     analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-    analogWrite(MOT_R_PWM, MOT_L_PWM_MAX);
+    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
     if (girarDerechaPorDefecto) {
       if (sharpIzq) {
         izquierda();
