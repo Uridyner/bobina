@@ -69,7 +69,7 @@ constexpr uint8_t PINES_LEDS[] = { 8, 5, 4 };
 constexpr size_t NUM_LEDS = sizeof(PINES_LEDS) / sizeof(PINES_LEDS[0]);
 
 /// Pines de los botones
-constexpr uint8_t PINES_BOTONES[] = { 2, 3 };
+constexpr uint8_t PINES_BOTONES[] = { 3, 2 };
 /// Numero de botones en la placa
 constexpr size_t NUM_BOTONES = sizeof(PINES_BOTONES) / sizeof(PINES_BOTONES[0]);
 
@@ -265,11 +265,7 @@ inline bool estaPresionado(size_t boton) {
   debugPrint(boton);
   debugPrint(": ");
   debugPrintln(valor);
-  if (boton == 0) {
-    return valor == HIGH;
-  } else if (boton == 1) {
-    return valor == LOW;
-  }
+  return valor == LOW;
 }
 
 enum {
@@ -308,27 +304,37 @@ void setup() {
   setupBotones();
 
   unsigned long ultimoCambioLeds = millis();
-  unsigned long ultimaPresionBoton = millis();
-  bool ultimoEstadoBoton = estaPresionado(1);
+  unsigned long comienzoPresionBoton0 = millis();
+  unsigned long comienzoPresionBoton1 = millis();
+  bool ultimoEstadoBoton0 = estaPresionado(0);
+  bool ultimoEstadoBoton1 = estaPresionado(1);
 
-  // Cambiar estado o salir si se mantuvo por 1000 ms
-  while (estaPresionado(1) == false && ultimoEstadoBoton == true && millis() - ultimaPresionBoton > 1000) {
-    for (size_t i = 0; i < NUM_LEDS - 1; i++) {
+  while (true) {
+    for (size_t i = 0; i < NUM_LEDS; i++) {
       unsigned char valor = (estrategia / (int)pow(3, i)) % 3;
       if (valor == 0) {
         cambiarLed(i, false);
       } else if (valor == 1) {
-        cambiarLed(i, (millis() / 64) < 32);
+        cambiarLed(i, (millis() % 200) < 100);
       } else if (valor == 2) {
         cambiarLed(i, true);
       }
     }
-    bool estadoBoton = estaPresionado(1);
-    if (estadoBoton == true && ultimoEstadoBoton == false) {
-      estrategia++;
+    bool estadoBoton0 = estaPresionado(0);
+    bool estadoBoton1 = estaPresionado(1);
+    if (estadoBoton0 == true && ultimoEstadoBoton0 == false) {
+      comienzoPresionBoton0 = millis();
+    } else if (estadoBoton0 == false && ultimoEstadoBoton0 == true && millis() - comienzoPresionBoton0 > 100) {
+      estrategia = estrategia + 1;
       estrategia %= NUM_ESTRATEGIAS;
     }
-    ultimoEstadoBoton = estadoBoton;
+    if (estadoBoton1 == true && ultimoEstadoBoton1 == false) {
+      comienzoPresionBoton1 = millis();
+    } else if (estadoBoton1 == false && ultimoEstadoBoton1 == true && millis() - comienzoPresionBoton1 > 100) {
+      break;
+    }
+    ultimoEstadoBoton0 = estadoBoton0;
+    ultimoEstadoBoton1 = estadoBoton1;
   }
 
   for (size_t i = 0; i < NUM_LEDS - 1; i++) {
@@ -336,10 +342,10 @@ void setup() {
   }
 
   // Esperar a que se suelte
-  while (estaPresionado(1) == true) {}
+  while (estaPresionado(0) == false) {}
 
   // Esperar a que se aprete
-  while (estaPresionado(1) == false) {}
+  while (estaPresionado(1) == true) {}
 
   unsigned long tiempoComienzo = millis();
 
@@ -355,10 +361,9 @@ void setup() {
   while (millis() - tiempoComienzo < TIEMPO_ESPERA_MS) {
     unsigned long segundosRestantes = (TIEMPO_ESPERA_MS - (millis() - tiempoComienzo)) / 1000;
 
-    for (size_t i = 0; i < NUM_LEDS - 1; i++) {
+    for (size_t i = 0; i < NUM_LEDS; i++) {
       cambiarLed(i, bitRead(segundosRestantes, i) == true);
     }
-    cambiarLed(NUM_LEDS - 1, giroPreferido == GIRO_IZQ);
 
     if (millis() - ultimaLecturaCNYs > 20) {
       leerCNY();
@@ -398,11 +403,7 @@ void setup() {
   for (size_t i = 0; i < NUM_SHARPS; i++) {
     activacionesSharp[i] /= numeroLecturasSharps;
     activacionesSharp[i] *= 2.3;
-    if (i == SHARP_IZQ) {
-      activacionesSharp[i] = min(activacionesSharp[i], 180);
-    } else {
-      activacionesSharp[i] = min(activacionesSharp[i], 80);
-    }
+    activacionesSharp[i] = min(activacionesSharp[i], 80);
     debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
@@ -459,7 +460,7 @@ void estrategiaBasica(bool girarDerechaPorDefecto) {
     }
   }
 
-  ultimoDetectandoAdelante = sharpCen;
+  ultimoDetectandoCentro = sharpCen;
 }
 
 void estrategiaPasitos() {
@@ -468,6 +469,7 @@ void estrategiaPasitos() {
   bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
 }
 
+unsigned long comienzoRetroceso = millis();
 bool retrocediendo = false;
 
 void loop() {
@@ -486,14 +488,17 @@ void loop() {
   bool cnyIzq = lecturasCNY[CNY_IZQ] <= activacionesCNY[CNY_IZQ];
   bool cnyDer = lecturasCNY[CNY_DER] <= activacionesCNY[CNY_DER];
   if (cnyIzq || cnyDer) {
-    ultimoCambioRetrocediendo = millis();
+    comienzoRetroceso = millis();
     retrocediendo = true;
   }
 
   if (retrocediendo) {
-    if (millis() - ultimoCambioRetrocediendo > TIEMPO_RETROCEDER_MS) {
+    if (millis() - comienzoRetroceso > TIEMPO_RETROCEDER_MS) {
       retrocediendo = false;
     }
+    analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
+    analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+    atras();
   } else {
     switch (estrategia) {
       case BASICA_DER:
@@ -507,6 +512,10 @@ void loop() {
         break;
     }
   }
+
+  bool sharpIzq = smoothedSharps[SHARP_IZQ].get() > activacionesSharp[SHARP_IZQ];
+  bool sharpCen = smoothedSharps[SHARP_CEN].get() > activacionesSharp[SHARP_CEN];
+  bool sharpDer = smoothedSharps[SHARP_DER].get() > activacionesSharp[SHARP_DER];
 
   cambiarLed(0, sharpIzq);
   cambiarLed(1, sharpCen);
