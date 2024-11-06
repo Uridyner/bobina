@@ -7,7 +7,7 @@ constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 120;
+constexpr uint8_t MOT_L_PWM_MAX = 100;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
@@ -15,7 +15,7 @@ constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 120;
+constexpr uint8_t MOT_R_PWM_MAX = 100;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
@@ -46,7 +46,7 @@ constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 1;
+constexpr size_t LECTURAS_CNY = 5;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -79,8 +79,7 @@ constexpr unsigned int TIEMPO_ESPERA_MS = 5000;
 /// Tiempo que retrocede cuando detecta que está sobre el borde
 constexpr unsigned int TIEMPO_RETROCEDER_MS = 200;
 
-/// Tiempo que se espera antes de avanzar forzadamente cuando está girando
-/// para evitar que se pare la pelea
+/// Tiempo que se espera antes de avanzar forzadamente para evitar que se pare la pelea
 constexpr unsigned int TIEMPO_ESPERA_AVANCE_FORZADO_MS = 500;
 
 /// Tiempo que avanza forzadamente para evitar que se pare la pelea
@@ -429,6 +428,21 @@ void estrategiaBasica(bool girarDerechaPorDefecto) {
   /// Si la última vez que corrí detecté algo en el sharp del centro
   static bool ultimoDetectandoCentro = false;
 
+  static bool avanzandoForzadamente = false;
+  static unsigned long ultimoAvanceForzado = millis();
+  if (millis() - ultimoAvanceForzado > TIEMPO_ESPERA_AVANCE_FORZADO_MS) {
+    ultimoAvanceForzado = millis();
+    avanzandoForzadamente = true;
+  }
+  if (avanzandoForzadamente) {
+    if (millis() - ultimoAvanceForzado > TIEMPO_AVANCE_FORZADO_MS) {
+      avanzandoForzadamente = false;
+    }
+    analogWrite(MOT_L_PWM, 255);
+    analogWrite(MOT_R_PWM, 255);
+    adelante();
+  }
+
   if (sharpCen) {
     // Si acabo de detectar algo en el sharp del centro
     if (ultimoDetectandoCentro == false) {
@@ -488,7 +502,11 @@ void loop() {
   bool cnyIzq = lecturasCNY[CNY_IZQ] <= activacionesCNY[CNY_IZQ];
   bool cnyDer = lecturasCNY[CNY_DER] <= activacionesCNY[CNY_DER];
   if (cnyIzq || cnyDer) {
-    comienzoRetroceso = millis();
+    if (millis() - comienzoRetroceso <= TIEMPO_RETROCEDER_MS * 2) {
+      comienzoRetroceso = millis() - TIEMPO_RETROCEDER_MS / 2;
+    } else {
+      comienzoRetroceso = millis();
+    }
     retrocediendo = true;
   }
 
