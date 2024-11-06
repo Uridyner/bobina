@@ -7,7 +7,7 @@ constexpr uint8_t MOT_L_B = 7;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 150;
+constexpr uint8_t MOT_L_PWM_MAX = 120;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 12;
 /// Motor derecho, atrás
@@ -15,7 +15,7 @@ constexpr uint8_t MOT_R_B = 9;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 150;
+constexpr uint8_t MOT_R_PWM_MAX = 120;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
@@ -177,7 +177,7 @@ unsigned long activacionesSharp[NUM_SHARPS] = { 55, 55, 55 };
 Smoothed<uint16_t> smoothedSharps[NUM_SHARPS];
 unsigned long ultimaLecturaSharps = -1;
 
-Smoothed<unsigned int>* leerSharps() {
+Smoothed<uint16_t>* leerSharps() {
   if (millis() - ultimaLecturaSharps >= 1000 / FRECUENCIA_LECTURA_SHARP) {
     ultimaLecturaSharps = millis();
     for (size_t i = 0; i < NUM_SHARPS; i++) {
