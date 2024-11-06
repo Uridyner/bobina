@@ -311,11 +311,11 @@ void setup() {
 
   while (true) {
     for (size_t i = 0; i < NUM_LEDS; i++) {
-      unsigned char valor = (estrategia / (int)pow(3, i)) % 3;
+      unsigned char valor = (estrategia / (int)pow(3, NUM_LEDS - i - 1)) % 3;
       if (valor == 0) {
         cambiarLed(i, false);
       } else if (valor == 1) {
-        cambiarLed(i, (millis() % 200) < 100);
+        cambiarLed(i, ((millis() + i * 100) % 400) < 100);
       } else if (valor == 2) {
         cambiarLed(i, true);
       }
