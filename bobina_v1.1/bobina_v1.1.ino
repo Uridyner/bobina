@@ -29,7 +29,7 @@ constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 5;
+constexpr size_t LECTURAS_SHARP = 10;
 /// Lecturas por segundos de los sharp
 ///
 /// ! Desde que empezamos a usar la librería SharpIR esto se volvió inutil.S
@@ -402,8 +402,8 @@ void setup() {
   debugPrintln("Activaciones Sharps");
   for (size_t i = 0; i < NUM_SHARPS; i++) {
     activacionesSharp[i] /= numeroLecturasSharps;
-    activacionesSharp[i] *= 2.3;
-    activacionesSharp[i] = min(activacionesSharp[i], 80);
+    activacionesSharp[i] *= 1.5;
+    activacionesSharp[i] = constrain(activacionesSharp[i], 50, 90);
     debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
