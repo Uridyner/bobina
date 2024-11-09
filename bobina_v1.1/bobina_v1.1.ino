@@ -44,7 +44,7 @@ constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 4;
+constexpr size_t LECTURAS_CNY = 3;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -471,8 +471,8 @@ void estrategiaBasica(bool girarDerechaPorDefecto) {
       ultimoTiempoDeteccionCentro = millis();
     }
     if (millis() - ultimoTiempoDeteccionCentro > 300) {
-      analogWrite(MOT_L_PWM, 255);
-      analogWrite(MOT_R_PWM, 255);
+      analogWrite(MOT_L_PWM, min((uint16_t)MOT_L_PWM_MAX + 50, 255));
+      analogWrite(MOT_R_PWM, min((uint16_t)MOT_R_PWM_MAX + 50, 255));
     } else {
       analogWrite(MOT_L_PWM, min((uint16_t)MOT_L_PWM_MAX + 30, 255));
       analogWrite(MOT_R_PWM, min((uint16_t)MOT_R_PWM_MAX + 30, 255));
