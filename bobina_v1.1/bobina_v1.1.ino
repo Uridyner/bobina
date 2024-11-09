@@ -7,7 +7,7 @@ constexpr uint8_t MOT_L_B = 6;
 /// Motor izquierdo, velocidad/PWM
 constexpr uint8_t MOT_L_PWM = 11;
 /// Motor izquierdo, velocidad/PWM máximo
-constexpr uint8_t MOT_L_PWM_MAX = 100;
+constexpr uint8_t MOT_L_PWM_MAX = 130;
 /// Motor derecho, adelante
 constexpr uint8_t MOT_R_A = 9;
 /// Motor derecho, atrás
@@ -15,7 +15,7 @@ constexpr uint8_t MOT_R_B = 12;
 /// Motor derecho, velocidad/PWM
 constexpr uint8_t MOT_R_PWM = 10;
 /// Motor derecho, velocidad/PWM máximo
-constexpr uint8_t MOT_R_PWM_MAX = 100;
+constexpr uint8_t MOT_R_PWM_MAX = 130;
 
 enum LadoSharp {
   SHARP_IZQ = 0,
@@ -29,11 +29,9 @@ constexpr size_t NUM_SHARPS = sizeof(PINES_SHARPS) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los sharps.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_SHARP = 10;
+constexpr size_t LECTURAS_SHARP = 2;
 /// Lecturas por segundos de los sharp
-///
-/// ! Desde que empezamos a usar la librería SharpIR esto se volvió inutil.S
-constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 30;
+constexpr unsigned long FRECUENCIA_LECTURA_SHARP = 25;
 
 enum LadoCNY {
   CNY_IZQ = 0,
@@ -46,7 +44,7 @@ constexpr size_t NUM_CNY = sizeof(PINES_CNY) / sizeof(PINES_SHARPS[0]);
 /// Cantidad de veces que se leen los CNYs.
 ///
 /// Se usa para tomar un promedio de las lecturas y limpiar los valores.
-constexpr size_t LECTURAS_CNY = 5;
+constexpr size_t LECTURAS_CNY = 4;
 
 /// Voltaje máximo del ADC
 constexpr float VOLTAJE_MAX_ADC = 5.0;
@@ -271,6 +269,30 @@ enum {
   BASICA_DER,
   BASICA_IZQ,
   PASITOS,
+  // PRUEBA1,
+  // PRUEBA2,
+  // PRUEBA3,
+  // PRUEBA4,
+  // PRUEBA5,
+  // PRUEBA6,
+  // PRUEBA7,
+  // PRUEBA8,
+  // PRUEBA9,
+  // PRUEBA10,
+  // PRUEBA11,
+  // PRUEBA12,
+  // PRUEBA13,
+  // PRUEBA14,
+  // PRUEBA15,
+  // PRUEBA16,
+  // PRUEBA17,
+  // PRUEBA18,
+  // PRUEBA19,
+  // PRUEBA20,
+  // PRUEBA21,
+  // PRUEBA22,
+  // PRUEBA23,
+  // PRUEBA24,
   NUM_ESTRATEGIAS,
 } estrategia;
 
@@ -402,7 +424,7 @@ void setup() {
   for (size_t i = 0; i < NUM_SHARPS; i++) {
     activacionesSharp[i] /= numeroLecturasSharps;
     activacionesSharp[i] *= 1.5;
-    activacionesSharp[i] = constrain(activacionesSharp[i], 50, 90);
+    activacionesSharp[i] = constrain(activacionesSharp[i], 40, 70);
     debugPrint(activacionesSharp[i]);
     debugPrint('\t');
   }
@@ -448,12 +470,12 @@ void estrategiaBasica(bool girarDerechaPorDefecto) {
     if (ultimoDetectandoCentro == false) {
       ultimoTiempoDeteccionCentro = millis();
     }
-    if (millis() - ultimoTiempoDeteccionCentro > 1000) {
+    if (millis() - ultimoTiempoDeteccionCentro > 300) {
       analogWrite(MOT_L_PWM, 255);
       analogWrite(MOT_R_PWM, 255);
     } else {
-      analogWrite(MOT_L_PWM, MOT_L_PWM_MAX);
-      analogWrite(MOT_R_PWM, MOT_R_PWM_MAX);
+      analogWrite(MOT_L_PWM, min((uint16_t)MOT_L_PWM_MAX + 30, 255));
+      analogWrite(MOT_R_PWM, min((uint16_t)MOT_R_PWM_MAX + 30, 255));
     }
     adelante();
   } else {
